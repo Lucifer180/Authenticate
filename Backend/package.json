@@ -10,12 +10,14 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.6.0",
     "mongoose": "^9.10.0",
-    "nodemailer": "^9.0.6",
-    "nodemon": "^3.1.14",
+    "nodemailer": "^10.1.7",
     "pino": "^10.3.1"
   },
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
