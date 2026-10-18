@@ -11,6 +11,7 @@ const { generateAccessToken } = require("../utils/tokenService");
 const RefreshToken = require("../models/RefreshToken");
 const { generateApiKey, hashApiKey } = require("../services/apiKeyServices");;
 const ApiKey = require("../models/ApiKey");
+const { baseCookieOptions, refreshCookieOptions } = require("../config/cookieOptions");
 
 const register = async (req, res) => {
     try {
@@ -139,7 +140,7 @@ const logout = (req, res) => {
             });
         }
 
-        res.clearCookie("connect.sid");
+        res.clearCookie("connect.sid", baseCookieOptions);
 
         return res.status(200).json({
             message: "Logout successful",
@@ -288,12 +289,7 @@ const jwtLogin = async (req, res) => {
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         })
 
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        })
+        res.cookie("refreshToken", refreshToken, refreshCookieOptions)
 
         return res.status(200).json({
             message: "JWT login successful",
@@ -374,12 +370,7 @@ const refreshAccessToken = async (req, res) => {
         await storedToken.save();
 
         // The browser gets the raw token; only its hash is stored.
-        res.cookie("refreshToken", newRefreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie("refreshToken", newRefreshToken, refreshCookieOptions);
 
         const accessToken = generateAccessToken(user);
 
@@ -404,11 +395,7 @@ const jwtLogout = async (req, res) => {
             const tokenHash = hashRefreshToken(refreshToken)
             await RefreshToken.deleteOne({ tokenHash });
         };
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax"
-        });
+        res.clearCookie("refreshToken", baseCookieOptions);
         return res.status(200).json({
             message: "JWT logout successful",
         });
