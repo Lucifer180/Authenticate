@@ -9,12 +9,13 @@ import {
   useReactFlow,
   type Edge,
 } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Flow } from "../../auth-types/types";
 import CodeBlock from "../CodeBlock";
 import { ACTOR_LABEL, KIND_LABEL } from "./actors";
 import FlowNodeView, { type FlowNodeType, type NodeState } from "./FlowNodeView";
 import { layoutFlow, NODE_SIZE } from "./layout";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 
 const nodeTypes = { auth: FlowNodeView };
 
@@ -31,7 +32,11 @@ const FlowChartInner = ({ flow, height = 560 }: Props) => {
   const [selectedId, setSelectedId] = useState(flow.walkthrough[0]);
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
+  const centered = useRef(false);
   const { setCenter, getZoom } = useReactFlow();
+  // On touch screens one-finger drags must scroll the page, not pan the chart.
+  const isTouch = useMediaQuery("(pointer: coarse)");
+  const isNarrow = useMediaQuery("(max-width: 640px)");
 
   const visited = useMemo(() => new Set(flow.walkthrough.slice(0, progress + 1)), [flow, progress]);
   const traversed = useMemo(() => {
@@ -83,11 +88,17 @@ const FlowChartInner = ({ flow, height = 560 }: Props) => {
     const def = flow.nodes.find((n) => n.id === selectedId);
     if (!pos || !def) return;
     const size = NODE_SIZE[def.kind];
-    setCenter(pos.x + size.width / 2, pos.y + size.height / 2, {
-      zoom: Math.max(getZoom(), 1),
-      duration: 450,
+    // Wait a frame so the canvas has its final size before the viewport moves.
+    const frame = requestAnimationFrame(() => {
+      setCenter(pos.x + size.width / 2, pos.y + size.height / 2, {
+        zoom: Math.max(getZoom(), isNarrow ? 0.75 : 1),
+        // Jump straight to the first step on load; animate between later steps.
+        duration: centered.current ? 450 : 0,
+      });
+      centered.current = true;
     });
-  }, [ready, selectedId, positions, flow, setCenter, getZoom]);
+    return () => cancelAnimationFrame(frame);
+  }, [ready, selectedId, positions, flow, setCenter, getZoom, isNarrow]);
 
   const goTo = (index: number) => {
     const clamped = Math.min(Math.max(index, 0), flow.walkthrough.length - 1);
@@ -110,10 +121,10 @@ const FlowChartInner = ({ flow, height = 560 }: Props) => {
   const stepIndex = flow.walkthrough.indexOf(selected.id);
 
   return (
-    <div className="flowchart">
+    <div className={`flowchart ${isTouch ? "flowchart--touch" : ""}`}>
       <div
         className="flowchart__canvas"
-        style={{ height }}
+        style={{ "--canvas-h": `${height}px` } as CSSProperties}
         tabIndex={0}
         onKeyDown={(event) => {
           if (event.key === "ArrowRight") goTo(progress + 1);
@@ -125,12 +136,13 @@ const FlowChartInner = ({ flow, height = 560 }: Props) => {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          defaultViewport={{ x: 0, y: 0, zoom: isNarrow ? 0.75 : 1 }}
           onInit={() => setReady(true)}
           minZoom={0.3}
           maxZoom={1.6}
           nodesDraggable={false}
           nodesConnectable={false}
+          panOnDrag={!isTouch}
           proOptions={{ hideAttribution: true }}
           onNodeClick={(_, node) => {
             const index = flow.walkthrough.indexOf(node.id);
@@ -165,7 +177,7 @@ const FlowChartInner = ({ flow, height = 560 }: Props) => {
               setPlaying(true);
             }}
           >
-            {playing ? "Pause" : progress === 0 ? "Play walkthrough" : progress >= flow.walkthrough.length - 1 ? "Replay" : "Play"}
+            {playing ? "Pause" : progress >= flow.walkthrough.length - 1 ? "Replay" : "Play"}
           </button>
           <button
             className="btn btn--ghost"

@@ -116,6 +116,7 @@ pre {
 
 .stack {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
 }
 
@@ -304,6 +305,8 @@ pre {
 /* ---------- Home ---------- */
 .home {
   display: grid;
+  /* minmax(0, …) lets wide tables scroll inside .table-wrap instead of widening the page */
+  grid-template-columns: minmax(0, 1fr);
   gap: 3rem;
 }
 
@@ -688,7 +691,8 @@ a.type-card:hover {
 
 .flowchart__canvas {
   position: relative;
-  min-height: 360px;
+  height: var(--canvas-h, 560px);
+  min-height: 320px;
   background: var(--bg);
   outline: none;
 }
@@ -1467,6 +1471,70 @@ a.type-card:hover {
   max-height: 260px;
 }
 
+/* Bottom-sheet toggle for the inspector; only shown on small screens. */
+.sheet-bar {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.6rem 1rem;
+  padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheet-bar__title {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheet-bar__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  margin-left: 0.25rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.sheet-bar__latest {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 0.78rem var(--mono);
+  color: var(--muted);
+}
+
+.sheet-bar__latest .is-ok {
+  color: var(--ok);
+}
+
+.sheet-bar__latest .is-bad {
+  color: var(--bad);
+}
+
+.sheet-bar__chevron {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* Touch screens: let one-finger drags scroll the page; use +/- or tap steps to move the chart. */
+.flowchart--touch .react-flow__pane,
+.flowchart--touch .react-flow__node {
+  touch-action: pan-y;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1080px) {
   .flowchart {
@@ -1478,17 +1546,116 @@ a.type-card:hover {
     border-top: 1px solid var(--border);
   }
 
+  .flowchart__canvas {
+    height: min(var(--canvas-h, 560px), 60vh);
+  }
+
   .example {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  }
+}
+
+@media (max-width: 900px) {
+  /* Network inspector becomes a bottom sheet: a slim bar that expands on tap. */
+  .example {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 64px;
   }
 
   .example__side {
-    position: static;
-    max-height: 520px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 30;
+    max-height: 75vh;
+    flex-direction: column;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 18%);
+  }
+
+  .example__side .log {
+    display: none;
+    border: 0;
+    border-radius: 0;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .example__side.is-open .log {
+    display: flex;
+  }
+
+  /* The sheet bar already says "Network inspector". */
+  .example__side .log__head h4 {
+    display: none;
+  }
+
+  .sheet-bar {
+    display: flex;
   }
 }
 
 @media (max-width: 640px) {
+  .stack {
+    gap: 1.5rem;
+  }
+
+  .type-page__head {
+    align-items: flex-start;
+  }
+
+  .stepper {
+    gap: 0;
+  }
+
+  .stepper__item {
+    flex: 1;
+    justify-content: center;
+    padding: 0.6rem 0.25rem;
+    font-size: 0.9rem;
+    gap: 0.35rem;
+  }
+
+  /* Flow picker: one swipeable row instead of a tall stack of pills. */
+  .flow-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem 0.25rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .flow-tab {
+    flex: none;
+    max-width: 78vw;
+    scroll-snap-align: start;
+  }
+
+  .walk .btn {
+    font-size: 0.85rem;
+  }
+
+  .next {
+    justify-content: stretch;
+  }
+
+  .next .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .action__card,
+  .example__status {
+    padding: 0.85rem;
+  }
+
+  .hero__steps {
+    flex-direction: column;
+  }
+
   .content {
     padding: 1.25rem 1rem 3rem;
   }

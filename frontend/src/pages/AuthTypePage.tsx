@@ -128,7 +128,7 @@ const ExampleSection = ({ type }: { type: AuthTypeDefinition }) => (
     <div className="callout">
       <b>This example calls the real backend</b> at <code>{API_BASE_URL}</code>. Start it with{" "}
       <code>cd Backend &amp;&amp; npm run dev</code>. Work through the steps top to bottom and watch the network inspector
-      on the right.
+      (on the right, or the bar at the bottom of the screen on a phone).
     </div>
     <type.Example />
   </div>
