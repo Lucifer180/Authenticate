@@ -11,6 +11,20 @@ const googleClient = new OAuth2Client(
 );
 const jwt = require("jsonwebtoken");
 const { requireGoogleJwt } = require("../middleware/googleMiddleware");
+const { baseCookieOptions } = require("../config/cookieOptions");
+
+const GOOGLE_JWT_CALLBACK_URL =
+    process.env.GOOGLE_JWT_CALLBACK_URL || "http://localhost:5000/api/auth/google/jwt/callback";
+
+// Where the browser lands after Google sends it back (the OAuth page of the frontend).
+// FRONTEND_URL includes the GitHub Pages base path, e.g. http://localhost:5173/Authenticate
+const frontendOAuthUrl = () =>
+    `${(process.env.FRONTEND_URL || "http://localhost:5173/Authenticate").replace(/\/$/, "")}/learn/oauth/example`;
+
+// The callbacks are full-page navigations, not fetch calls, so errors go back
+// to the frontend as a query parameter instead of a JSON body nobody would see.
+const redirectWithError = (res, message) =>
+    res.redirect(`${frontendOAuthUrl()}?oauth_error=${encodeURIComponent(message)}`);
 
 router.get("/google", (req, res) => {
     const state = crypto.randomBytes(32).toString("hex");
@@ -41,22 +55,15 @@ router.get("/google/callback", async (req, res) => {
     const savedState = req.cookies?.google_oauth_state;
 
     if (error) {
-        return res.status(400).json({
-            message: "Google authorization was not completed",
-            error,
-        });
+        return redirectWithError(res, "Google authorization was not completed");
     };
 
     if (!code) {
-        return res.status(400).json({
-            message: "Invalid Oauth state"
-        })
+        return redirectWithError(res, "Invalid Oauth state");
     };
 
     if (!state || !savedState || state !== savedState) {
-        return res.status(400).json({
-            message: "invalid Oauth state",
-        })
+        return redirectWithError(res, "invalid Oauth state");
     };
 
     res.clearCookie("google_oauth_state");
@@ -83,15 +90,11 @@ router.get("/google/callback", async (req, res) => {
         if (!tokenResponse.ok) {
             console.error("Google token exchange failed:", tokens.error);
 
-            return res.status(401).json({
-                message: "Failed to exchange authorization code",
-            });
+            return redirectWithError(res, "Failed to exchange authorization code");
         }
 
         if (!tokens.id_token) {
-            return res.status(401).json({
-                message: "google Id token is missing"
-            })
+            return redirectWithError(res, "google Id token is missing");
         };
 
         const ticket = await googleClient.verifyIdToken({
@@ -104,9 +107,7 @@ router.get("/google/callback", async (req, res) => {
 
 
         if (!payload || payload.email_verified !== true) {
-            return res.status(401).json({
-                message: "Google email is not verified",
-            });
+            return redirectWithError(res, "Google email is not verified");
         }
         const { user } = await findOrCreateGoogleUser(payload);
 
@@ -114,9 +115,7 @@ router.get("/google/callback", async (req, res) => {
             if (error) {
                 console.error("Session regeneration error:", error.message);
 
-                return res.status(500).json({
-                    message: "Failed to establish login session",
-                });
+                return redirectWithError(res, "Failed to establish login session");
             }
 
             req.session.googleUserId = user._id.toString();
@@ -125,12 +124,10 @@ router.get("/google/callback", async (req, res) => {
                 if (saveError) {
                     console.error("Google session save error:", saveError.message);
 
-                    return res.status(500).json({
-                        message: "Failed to establish login session",
-                    });
+                    return redirectWithError(res, "Failed to establish login session");
                 }
 
-                return res.redirect("http://localhost:5173/google-dashboard");
+                return res.redirect(`${frontendOAuthUrl()}?login=google-session`);
             });
         });
         // return res.status(created ? 201 : 200).json({
@@ -157,9 +154,7 @@ router.get("/google/callback", async (req, res) => {
         // // });
     } catch (error) {
         console.error("Google token exchange error:", error.message);
-        return res.status(500).json({
-            message: "Google token exchange failed",
-        });
+        return redirectWithError(res, "Google token exchange failed");
     }
 });
 
@@ -183,7 +178,7 @@ router.post("/google/logout", requireGoogleSession, (req, res) => {
             })
         };
 
-        res.clearCookie("connect.sid");
+        res.clearCookie("connect.sid", baseCookieOptions);
 
         return res.status(200).json({
             message: "Google session logout successfully"
@@ -195,16 +190,12 @@ router.get("/google/jwt/callback", async (req, res) => {
     const { code, state, error } = req.query;
     const savedState = req.cookies?.google_oauth_jwt_sign
     if (error) {
-        return res.status(400).json({
-            message: "Google authorization was not completed"
-        });
+        return redirectWithError(res, "Google authorization was not completed");
     };
 
 
     if (!code || !state || !savedState || state !== savedState) {
-        return res.status(400).json({
-            message: "Invalid OAuth state",
-        });
+        return redirectWithError(res, "Invalid OAuth state");
     }
     res.clearCookie("google_oauth_jwt_sign");
 
@@ -213,7 +204,7 @@ router.get("/google/jwt/callback", async (req, res) => {
             code,
             client_id: process.env.GOOGLE_CLIENT_ID,
             client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            redirect_uri: "http://localhost:5000/api/auth/google/jwt/callback",
+            redirect_uri: GOOGLE_JWT_CALLBACK_URL,
             grant_type: "authorization_code",
         });
 
@@ -228,9 +219,7 @@ router.get("/google/jwt/callback", async (req, res) => {
         const tokens = await tokenResponse.json();
 
         if (!tokenResponse.ok || !tokens.id_token) {
-            return res.status(401).json({
-                message: "Google token exchange failed",
-            });
+            return redirectWithError(res, "Google token exchange failed");
         };
 
         const ticket = await googleClient.verifyIdToken({
@@ -241,9 +230,7 @@ router.get("/google/jwt/callback", async (req, res) => {
         const payload = ticket.getPayload();
 
         if (!payload || payload.email_verified !== true || !payload.sub) {
-            return res.status(401).json({
-                message: "Google identity verification failed",
-            });
+            return redirectWithError(res, "Google identity verification failed");
         };
 
         const { user } = await findOrCreateGoogleUser(payload);
@@ -259,23 +246,22 @@ router.get("/google/jwt/callback", async (req, res) => {
                 audience: "authentication-lab-api"
             }
         );
-        return res.status(200).json({
-            message: "Google login successfull; application JWT issued",
-            tokenType: "Bearer",
-            expiresIn: process.env.GOOGLE_APP_JWT_EXPIRES_IN || "15m",
-            accessToken: appToken,
-            user: {
-                id: user._id.toString(),
-                email: user.email,
-                name: user.name
-            }
-        })
+        // This is a browser redirect, so a JSON body would just be shown as text.
+        // Hand the token to the SPA in the URL fragment (#...): browsers never send
+        // the fragment to any server, and the frontend removes it right away.
+        const fragment = new URLSearchParams({
+            access_token: appToken,
+            token_type: "Bearer",
+            expires_in: process.env.GOOGLE_APP_JWT_EXPIRES_IN || "15m",
+            name: user.name,
+            email: user.email,
+        });
+
+        return res.redirect(`${frontendOAuthUrl()}?login=google-jwt#${fragment.toString()}`);
     } catch (error) {
         console.error("Google JWT callback failed:", error.message);
 
-        return res.status(500).json({
-            message: "Google JWT authentication failed",
-        });
+        return redirectWithError(res, "Google JWT authentication failed");
     }
 });
 
@@ -291,7 +277,7 @@ router.get("/google/jwt", (req, res) => {
 
     const params = new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID,
-        redirect_uri: "http://localhost:5000/api/auth/google/jwt/callback",
+        redirect_uri: GOOGLE_JWT_CALLBACK_URL,
         response_type: "code",
         scope: "openid email profile",
         state
