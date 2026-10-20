@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema(
         sessionVersion: {
             type: Number,
             default: 0
+        },
+        googleId:{
+            type:String,
+            unique:true,
+            sparse:true
         }
     },
     {
