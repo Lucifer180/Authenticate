@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import { authTypes, plannedAuthTypes } from "../auth-types/registry";
 
 const COMPARISON = [
-  { label: "Proof of identity", session: "Session id in httpOnly cookie", jwt: "Signed JWT in Authorization header", "api-key": "Random secret in x-api-key header" },
-  { label: "State on the server", session: "Session record per login", jwt: "Only refresh-token hashes", "api-key": "Key hash + permissions" },
-  { label: "Instant revocation", session: "Yes: delete the session", jwt: "Refresh only; access token lives until exp", "api-key": "Yes: revoked flag" },
-  { label: "Typical caller", session: "Browser on a trusted origin", jwt: "SPA, mobile app, microservices", "api-key": "Another server or script" },
+  { label: "Proof of identity", session: "Session id in httpOnly cookie", jwt: "Signed JWT in Authorization header", "api-key": "Random secret in x-api-key header", oauth: "Google ID token, then your own session or JWT" },
+  { label: "State on the server", session: "Session record per login", jwt: "Only refresh-token hashes", "api-key": "Key hash + permissions", oauth: "OAuth state cookie + GoogleUser record" },
+  { label: "Instant revocation", session: "Yes: delete the session", jwt: "Refresh only; access token lives until exp", "api-key": "Yes: revoked flag", oauth: "Same as the session or JWT it ends with" },
+  { label: "Typical caller", session: "Browser on a trusted origin", jwt: "SPA, mobile app, microservices", "api-key": "Another server or script", oauth: "Users who sign in with Google" },
 ] as const;
 
 const HomePage = () => (
@@ -72,7 +72,7 @@ const HomePage = () => (
               <tr key={row.label}>
                 <th scope="row">{row.label}</th>
                 {authTypes.map((type) => (
-                  <td key={type.id}>{row[type.id as "session" | "jwt" | "api-key"] ?? "–"}</td>
+                  <td key={type.id}>{row[type.id as "session" | "jwt" | "api-key" | "oauth"] ?? "–"}</td>
                 ))}
               </tr>
             ))}

@@ -18,7 +18,19 @@ const formatSeconds = (total: number) => {
 };
 
 /** Shows a JWT the way jwt.io does: three coloured parts, decoded below. */
-const TokenView = ({ token }: { token: string | null }) => {
+interface Props {
+  token: string | null;
+  /** Name of the signing secret shown in the signature explanation. */
+  secretName?: string;
+  /** What happens when the token expires (differs per auth type). */
+  expiredText?: string;
+}
+
+const TokenView = ({
+  token,
+  secretName = "JWT_ACCESS_SECRET",
+  expiredText = "Expired: the next API call will get 401 and trigger a refresh.",
+}: Props) => {
   const decoded = token ? decodeJwt(token) : null;
   const now = useNow(Boolean(decoded?.payload.exp));
 
@@ -48,13 +60,13 @@ const TokenView = ({ token }: { token: string | null }) => {
         </div>
         <div>
           <h5 className="token__s">Signature</h5>
-          <p>HMAC-SHA256(header + "." + payload, JWT_ACCESS_SECRET). Only the server can produce or check it.</p>
+          <p>HMAC-SHA256(header + "." + payload, {secretName}). Only the server can produce or check it.</p>
         </div>
       </div>
       {secondsLeft !== null && (
         <p className={`token__exp ${secondsLeft === 0 ? "is-expired" : ""}`}>
           {secondsLeft === 0
-            ? "Expired: the next API call will get 401 and trigger a refresh."
+            ? expiredText
             : `Expires in ${formatSeconds(secondsLeft)}`}
         </p>
       )}

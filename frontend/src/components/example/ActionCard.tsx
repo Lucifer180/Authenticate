@@ -2,7 +2,8 @@ import type { FormEvent, ReactNode } from "react";
 import { useAction, type Outcome } from "./useAction";
 
 interface Props {
-  step: number;
+  /** Step number badge; omit for explanatory cards. */
+  step?: number;
   title: string;
   /** e.g. "POST /auth/login" */
   endpoint?: string;
@@ -36,7 +37,7 @@ const ActionCard = ({ step, title, endpoint, notice, children, onRun, runLabel =
     <li className="action">
       <form className="action__card" onSubmit={submit}>
         <header className="action__head">
-          <span className="action__step">{step}</span>
+          {step !== undefined && <span className="action__step">{step}</span>}
           <h4>{title}</h4>
           {endpoint && <code className="action__endpoint">{endpoint}</code>}
         </header>

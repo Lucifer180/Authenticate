@@ -404,6 +404,10 @@ a.type-card:hover {
   --tone: var(--a-middleware);
 }
 
+.type-card--oauth {
+  --tone: var(--a-database);
+}
+
 .type-card__badge {
   align-self: flex-start;
   font: 700 0.75rem var(--mono);
@@ -1469,6 +1473,16 @@ a.type-card:hover {
   border-radius: 6px;
   overflow-x: auto;
   max-height: 260px;
+}
+
+/* OAuth redirect timeline */
+.timeline {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.9rem;
 }
 
 /* Bottom-sheet toggle for the inspector; only shown on small screens. */
